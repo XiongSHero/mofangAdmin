@@ -4,11 +4,13 @@
 
 ## Build Setup
 
+cd mofangAdmin
+
 ``` bash
 # install dependencies
 npm install
 
-# serve with hot reload at 192.168.5.164:8080
+# serve with hot reload at 192.168.5.164:8080 and nodejs 192.168.5.164:3002
 npm run dev
 
 # build for production with minification
