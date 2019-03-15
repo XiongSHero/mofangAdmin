@@ -1,5 +1,6 @@
 import Login from '../components/Login'
 import Admin from '../components/Admin'
+import Index from '../components/Index'
 /* import Index from '../components/Index'
 import Task from '../components/Task'
 import ClientRecord from '../components/ClientRecord'
@@ -22,8 +23,8 @@ export default new VueRouter({
       children: [
         {
           path: '/index',
-          // component: Index,
-          component: () => import(/* webpackChunkName: "index" */ '../components/Index'),
+          component: Index,
+          // component: () => import(/* webpackChunkName: "index" */ '../components/Index'),
           name: 'Index'
         },
         {
@@ -49,6 +50,12 @@ export default new VueRouter({
           // component: Setting,
           component: () => import(/* webpackChunkName: "setting" */ '../components/Setting'),
           name: 'Setting'
+        },
+        {
+          path: '/excel',
+          // component: Setting,
+          component: () => import(/* webpackChunkName: "setting" */ '../components/common/ExcelImg'),
+          name: 'excel'
         }
       ]
     }

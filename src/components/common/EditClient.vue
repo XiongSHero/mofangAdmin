@@ -166,7 +166,6 @@ export default {
       data.clientphone = this.form.clientphone
       data.right = util.getSession('store').user.right
       this.validate(data)
-      console.log(data)
       util.mf_post(config.host + '/clientPoolPage/editClient', data, this, '提交客户编辑')
         .then(res => {
           this.$message({

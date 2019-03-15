@@ -159,7 +159,6 @@ export default {
               break
           }
         } else {
-          console.log('error submit!!')
           return false
         }
       })

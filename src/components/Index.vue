@@ -377,7 +377,6 @@
       util.mf_post(config.host + '/indexPage/getTenDetail', {id: row.clientphone, right:util.getSession('store').user.right}, this, '获取客户详情数据').then((res) => {
         this.clientDescr = res.descr
         this.clientDetail = res.detail
-        console.log(res)
       })
       this.showDtailCard = true
     },

@@ -1,7 +1,7 @@
 const controller = require('../../controller/clientPoolPage')
 const model = require('../model')
 const m = model(['isAddClient', 'addClient', 'getClientDate', 'getClientDetail', 'editClient',
-  'deleteClient'], 'clientPoolPage')
+  'deleteClient', 'uploadExcel', 'getClientByPhone', 'getAllRights', 'modifyRight'], 'clientPoolPage')
 
 /* 添加客户， 如果已有不能重复添加 */
 const addClient = async ctx => {
@@ -149,6 +149,58 @@ const editClient = async ctx => {
   ctx.body = res
 }
 /* 删除客户 */
+const uploadExcel = async ctx => {
+  let res
+  const uploadClient = ctx.request.body
+  let upload = []
+  let phone = []
+  uploadClient.forEach((item, i) => {
+    upload[i] = []
+    upload[i].push(item['client'])
+    upload[i].push(item['tasktime'])
+    upload[i].push(item['state'])
+    upload[i].push(item['clientphone'])
+    upload[i].push(item['child'])
+    upload[i].push(item['relationship'])
+    upload[i].push(item['age'])
+    upload[i].push(item['stage'])
+    upload[i].push(item['subject'])
+    upload[i].push(item['will'])
+    upload[i].push(item['operater'])
+    phone.push(item['clientphone'])
+  })
+  try {
+    const isRepeat = await controller.isRepeat(phone)
+    if (isRepeat.length > 0) {
+      res = {
+        code: 200,
+        msg: {
+          status: 1,
+          msg: isRepeat
+        }
+      }
+    } else {
+      const result = await controller.uploadExcel(upload)
+      console.log('=================================================')
+      console.log(result)
+      console.log('=================================================')
+      res = {
+        code: 200,
+        msg: {
+          status: 0,
+          msg: result.affectedRows
+        }
+      }
+    }
+  } catch (err) {
+    res = {
+      code: 400,
+      result: err
+    }
+  }
+  ctx.body = res
+}
+/* 删除表格数据 */
 const deleteClient = async ctx => {
   let res
   const deleteClient = ctx.request.body
@@ -169,6 +221,77 @@ const deleteClient = async ctx => {
   }
   ctx.body = res
 }
+/* 根据电话查询客户 */
+const getClientByPhone = async ctx => {
+  let res
+  const phone = ctx.request.body
+  try {
+    const result = await controller.getClientByPhone(phone)
+    res = {
+      code: 200,
+      msg: result
+    }
+  } catch (err) {
+    res = {
+      code: 400,
+      result: err
+    }
+  }
+  ctx.body = res
+}
+
+/* 获取所有的权限 */
+const getAllRights = async ctx => {
+  let res
+  const right = ctx.request.body
+  try {
+    const result = await controller.getAllRights(right)
+    res = {
+      code: 200,
+      msg: result
+    }
+  } catch (err) {
+    res = {
+      code: 400,
+      result: err
+    }
+  }
+  ctx.body = res
+}
+
+/* 修改权限 */
+const modifyRight = async ctx => {
+  let res
+  const right = ctx.request.body
+  try {
+    const result = await controller.modifyRight(right)
+    console.log(result)
+    if (result.affectedRows === 1) {
+      res = {
+        code: 200,
+        msg: {
+          status: 0,
+          msg: '修改成功'
+        }
+      }
+    } else {
+      res = {
+        code: 200,
+        msg: {
+          status: 1,
+          msg: '修改失败'
+        }
+      }
+    }
+  } catch (err) {
+    res = {
+      code: 400,
+      result: err
+    }
+  }
+  ctx.body = res
+}
+
 module.exports = {
   ...m,
   addClient,
@@ -176,5 +299,9 @@ module.exports = {
   getClientByState,
   getClientDetail,
   editClient,
-  deleteClient
+  deleteClient,
+  uploadExcel,
+  getClientByPhone,
+  getAllRights,
+  modifyRight
 }

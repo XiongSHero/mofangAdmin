@@ -142,9 +142,10 @@ export default {
         this[el] = true
       })
     },
+    /* 获取详细信息 */
     getTaskDetail (row) {
       let data = {}
-      data.right = this.right
+      data.right = util.getSession('store').user.right
       data.clientphone = row.clientphone
       util.mf_post(config.host + '/clientPoolPage/getClientDetail', data, this, '获取' + row.client + '详细数据')
         .then(res => {

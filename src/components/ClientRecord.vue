@@ -91,7 +91,6 @@ export default {
       showRecordCard: false,
       rowData: {},
       recordData: [],
-      right: '', /* 权限 */
       pageIndex: 1, /* 分页当前页码 */
       totalPage: '', /* 分页总页码 */
       dateType: '', /* 时间类型（all，week，month，3day） */
@@ -150,9 +149,8 @@ export default {
     },
     /* 获取详情数据 */
     getTaskDetail (row) {
-      console.log(row)
       let data = {}
-      data.right = this.right
+      data.right = util.getSession('store').user.right
       data.clientphone = row.phone
       util.mf_post(config.host + '/clientPoolPage/getClientDetail', data, this, '获取' + row.client + '详细数据')
         .then(res => {

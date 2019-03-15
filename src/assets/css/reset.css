@@ -99,4 +99,18 @@ body, html, #app{
 .add-client span{
   color: #fff;
 }
-
+.el-notification{
+  max-height: 300px;
+  overflow: auto;
+}
+.vue-xlsx-container .xlsx-button{
+  padding: 9px 10px;
+  margin-left: 10px;
+}
+.el-dropdown-link {
+  cursor: pointer;
+  color: #409EFF;
+}
+.el-icon-arrow-down {
+  font-size: 12px;
+}

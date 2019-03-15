@@ -4,9 +4,9 @@ const config = {
 
   // 数据库配置
   database: {
-    DATABASE: 'mofang_admin',
+    DATABASE: 'mofang-admin',
     USERNAME: 'root',
-    PASSWORD: 'root',
+    PASSWORD: 'mofang-admin123',
     PORT: '3306',
     HOST: 'localhost'
   },

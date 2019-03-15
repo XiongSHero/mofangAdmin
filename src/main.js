@@ -2,11 +2,13 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 /* eslint-disable */
 import App from './App'
-
 import './assets/css/reset.css'
 import router from './router'
 import store from './vuex/store'
+/*import vueXlsxTable from 'vue-xlsx-table'
+Vue.use(vueXlsxTable, {rABS: false})*/
 const username = localStorage.getItem('username')
+
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     // this route requires auth, check if logged in
@@ -32,13 +34,15 @@ router.beforeEach((to, from, next) => {
       case '/setting':
         store.dispatch('setTitlename', {name: '设置'})
         break
+      default:
+        store.dispatch('setTitlename', {name: ''})
     }
   } else {
     next() // 确保一定要调用 next()
   }
 })
 
-Vue.config.productionTip = false
+Vue.config.productionTip = true
 
 /* eslint-disable no-new */
 new Vue({

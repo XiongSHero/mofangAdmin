@@ -3,8 +3,8 @@ const { query } = pool
 
 /* 检查有没有该用户，不能重复添加客户 */
 const isAddClient = (val) => {
-  const { client } = val
-  const _sql = `select client from mf_task where client='${client}'`
+  const { clientphone } = val
+  const _sql = `select client from mf_task where clientphone='${clientphone}'`
   return query(_sql)
 }
 /* 添加数据 */
@@ -141,6 +141,52 @@ const deleteClient = (val) => {
   const deleteDescr = query(_sqldeldescr)
   return Promise.all([deleteClient, deleteDescr])
 }
+/* 上传excel表格数据 */
+const uploadExcel = (val) => {
+  // const { client, tasktime, state, clientphone, child, relationship,
+  //   age, stage, subject, will, operater} = val
+  const _sql = 'insert into `mf_task` (`client`, `tasktime`, `state`, `clientphone`, `child`, `relationship`,\n' +
+    ' `age`, `stage`, `subject`, `will`, `operater`) values ?'
+  return query(_sql, [val])
+}
+
+/* 检查上传的数据是否有重复 */
+const isRepeat = (val) => {
+  const _sql = `select clientphone from mf_task where clientphone in (?)`
+  return query(_sql, [val])
+}
+
+/* 根据电话获取客户信息 */
+const getClientByPhone = (val) => {
+  const {phone, right} = val
+  if (right === 'admin') {
+    const _sql = `select id, DATE_FORMAT(tasktime,'%Y-%m-%d %H:%i:%s') as tasktime, client, state, clientphone, child,
+                relationship, age, stage, subject, will from mf_task where clientphone
+                ='${phone}'`
+    return query(_sql)
+  } else {
+    const _sql = `select id, DATE_FORMAT(tasktime,'%Y-%m-%d %H:%i:%s') as tasktime, client, state, clientphone, child,
+                relationship, age, stage, subject, will from mf_task where clientphone
+                ='${phone}' and operater='${right}'`
+    return query(_sql)
+  }
+}
+
+/* 获取所有的权限 */
+const getAllRights = (val) => {
+  const {mainRight} = val
+  if (mainRight === 'admin') {
+    const _sql = `SELECT a.right from mf_admin a`
+    return query(_sql)
+  }
+}
+/* 修改权限 */
+const modifyRight = (val) => {
+  const {right, id} = val
+  const _sql = `update mf_task set operater='${right}' where id=${id}`
+  return query(_sql)
+}
+
 module.exports = {
   isAddClient,
   addClient,
@@ -148,5 +194,10 @@ module.exports = {
   getClientByState,
   getClientDetail,
   editClient,
-  deleteClient
+  deleteClient,
+  uploadExcel,
+  isRepeat,
+  getClientByPhone,
+  getAllRights,
+  modifyRight
 }

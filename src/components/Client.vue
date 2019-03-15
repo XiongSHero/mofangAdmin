@@ -13,14 +13,15 @@
         <el-tag @click="getClientByDay">今日新增</el-tag>
       </el-row>
       <div class="record-timepick">
-        客户<el-input v-model="input"  class="record-data" size="small" placeholder="请输入内容"></el-input>
-        电话<el-input v-model="input"  class="record-data" size="small" placeholder="请输入内容"></el-input>
-        <el-button type="primary" icon="el-icon-search"></el-button>
+        电话<el-input v-model="phone"  class="record-data" size="small" placeholder="请输入内容"></el-input>
+        <el-button type="primary" icon="el-icon-search" @click="getClientByPhone"></el-button>
         <el-button type="primary" class="add-client" @click="showAddClient">添加客户</el-button>
+        <vue-xlsx-table @on-select-file="readExcel">上传EXCEL</vue-xlsx-table>
+        <router-link :to="{path: '/excel'}" class="excelImg">excel数据格式??</router-link>
       </div>
       <el-table
         :data="clientData"
-        :loading="getClientLoading"
+        v-loading="getClientLoading"
         style="width: 100%"
         height="620"
         v-if="showTable"
@@ -42,6 +43,10 @@
           label="创建时间">
         </el-table-column>
         <el-table-column
+          prop="operater"
+          label="负责人">
+        </el-table-column>
+        <el-table-column
           prop="detail"
           label="详情">
           <template slot-scope="scope">
@@ -53,6 +58,21 @@
           label="工具">
           <template slot-scope="scope">
             <el-button type="text" class="client-button" @click="editClient(scope.row)">编辑</el-button>  /  <el-button class="client-button" @click="deleteClient(scope.row)" type="text">删除</el-button>
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-if="mainRight === 'admin'"
+          prop="handle"
+          label="权限">
+          <template slot-scope="scope" class="updateRight">
+            <el-dropdown @command="modifyRight" trigger="click">
+              <span class="el-dropdown-link" @click="getRowDetail(scope.row)">
+                修改权限<i class="el-icon-arrow-down el-icon--right"></i>
+              </span>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item v-for="right in rights" :key="right.right" :command="right.right">{{right.right}}</el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -79,17 +99,21 @@
 </template>
 
 <script>
+/* eslint-disable */
 import Record from './common/Record'
 import EditClient from './common/EditClient'
+import vueXlsxTable from './common/VueXlsxTable'
 import AddClient from './common/AddClient'
 import util from '../assets/js/util'
 import config from '../assets/js/config'
+
 export default {
   name: 'Client',
   components: {
     Record,
     EditClient,
-    AddClient
+    AddClient,
+    vueXlsxTable
   },
   data () {
     return {
@@ -110,7 +134,13 @@ export default {
       clientDetail: {}, /* 客户信息 */
       detailEdit: {}, /* 需要编辑的信息 */
       clientDescr: [], /* 客户任务记录 */
-      byDateOrState: false /* 分页切换是按日期（false）还是按状态切换（true） */
+      byDateOrState: false, /* 分页切换是按日期（false）还是按状态切换（true） */
+      uploadData: [],
+      excelUrl: '',
+      phone: '', /* 客户电话 */
+      rights: [], /* 所有的权限 */
+      mainRight: '', /* 主权限admin */
+      rowDetail: '' /* 被点击的行的信息 */
     }
   },
   created () {
@@ -131,8 +161,265 @@ export default {
         tag.classList.add('active')
       })
     }
+    window.addEventListener('load', () => {
+      this.getAllRights()
+    })
+  },
+  watch:{
+    '$route'(to){
+      if (to.path === '/client') {
+        this.getAllRights()
+      }
+    }
   },
   methods: {
+    /* 获取所有的权限 */
+    getAllRights () {
+      this.mainRight = util.getSession('store').user.right
+      if (this.mainRight === 'admin') {
+        util.mf_post(config.host + '/clientPoolPage/getAllRights', {mainRight: this.mainRight}, this, '获取所有权限')
+          .then(res => {
+            this.rights = res
+
+          })
+      }
+    },
+    /* 权限修改 */
+    modifyRight (right) {
+      if (this.mainRight !== 'admin') {
+        this.$message({
+          type: 'warning',
+          message: '权限不足'
+        })
+        return
+      }
+      const id = this.rowDetail.id
+      const client = this.rowDetail.client
+      this.$confirm(`是否修改《${client}》的权限?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.modifyAction(right,id)
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消修改'
+        })
+      })
+    },
+    modifyAction (right, id) {
+      util.mf_post(config.host + '/clientPoolPage/modifyRight', {right, id}, this, '修改权限失败')
+        .then(res => {
+          if (res.status === 0) {
+            this.$message({
+              type: 'success',
+              message: res.msg
+            })
+            this.reloadAfterAction()
+          } else if (res.status === 1) {
+            this.$message({
+              type: 'error',
+              message: res.msg
+            })
+          }
+        })
+    },
+    getRowDetail (row) {
+      this.rowDetail = row
+    },
+    /* 导入excel文件 */
+    readExcel (data) {
+      /* 验证表格数据 */
+      const excelData = data.body
+      if (excelData.length === 0) {
+        this.$message({
+          type: 'error',
+          message: '表格数据不能为空'
+        })
+        return false
+      }
+      const isData = excelData.every(item => {
+        return item['学生姓名'] && item['联系方式']
+      })
+      if (!isData) {
+        this.$message({
+          type: 'error',
+          message: '表格数据格式错误'
+        })
+        return false
+      }
+      /* 格式化表格数据 */
+      this.uploadData =  this.excelFormdate(excelData)
+      let repeat = []
+      this.uploadData.reduce(function (init, cur) {
+        if (init.length === 0 || init[init.length -1].clientphone !== cur.clientphone) {
+          init.push(cur)
+        } else if (init[init.length -1].clientphone === cur.clientphone) {
+          repeat.push(cur)
+        }
+        return init
+      },[])
+      let repeatStr = ''
+      if (repeat.length > 0) {
+        repeat.forEach(item => {
+          repeatStr += item.clientphone + '<br>'
+        })
+        this.$notify.error({
+          title: '表格数据重复',
+          dangerouslyUseHTMLString: true,
+          duration: 0,
+          message: repeatStr
+        });
+        return
+      }
+      this.getClientLoading = true
+      /* 将数据发送到后台 */
+      util.mf_post(config.host + '/clientPoolPage/uploadExcel', this.uploadData, this, '上传EXCEL表格数据')
+        .then(res => {
+          if (res.msg === this.uploadData.length && res.status === 0) {
+            this.$message({
+              type: 'success',
+              message: '上传成功'
+            })
+            this.reloadAfterAction()
+          } else if (res.status === 1) {
+            const result = res.msg
+            let str = ''
+            result.forEach(item => {
+              str += item.clientphone +'<br>'
+            })
+            this.$notify.error({
+              title: '系统中已有以下数据',
+              dangerouslyUseHTMLString: true,
+              duration: 0,
+              message: str
+            });
+          } else {
+            this.$message({
+              type: 'error',
+              message: '上传失败'
+            })
+          }
+          this.getClientLoading = false
+        }).catch(() => {
+        this.getClientLoading = false
+      })
+    },
+    /* 处理完成操作后，修改数据 */
+    reloadAfterAction () {
+      if (this.byDateOrState) {
+        this.getClientByState(this.clientState, this.indexPage)
+      } else {
+        this.getClientData(this.byDate, this.indexPage)
+      }
+    },
+    /* 处理excel上传的数据 */
+    excelFormdate (excelData) {
+      excelData.forEach(item => {
+        Object.keys(item).forEach(key => {
+          switch (key) {
+            case '学生姓名':
+              item.child = item[key]
+              delete item[key]
+              break
+            case '联系方式':
+              item.clientphone = String.trim(item[key])
+              delete item[key]
+              break
+            case '家长':
+              item.client = String.trim(item[key])
+              delete item[key]
+              break
+            case '关系':
+              item.relationship = String.trim(item[key])
+              delete item[key]
+              break
+            case '年龄':
+              item.age = String.trim(item[key])
+              delete item[key]
+              break
+            case '阶段':
+              // item.stage = String.trim(item[key])
+              switch (item[key]) {
+                case '小学':
+                  item.stage = 'xiao'
+                  break
+                case '初中':
+                  item.stage = 'chu'
+                  break
+                case '高中':
+                  item.stage = 'gao'
+                  break
+              }
+              delete item[key]
+              break
+            case '科目':
+              switch (item[key]) {
+                case '语文':
+                  item.subject = 'yu'
+                  break
+                case '数学':
+                  item.subject = 'shu'
+                  break
+                case '英语':
+                  item.subject = 'wai'
+                  break
+              }
+              delete item[key]
+              break
+            case '描述':
+              item.will = String.trim(item[key])
+              delete item[key]
+              break
+            default:
+              delete item[key]
+          }
+        })
+        item.state = 3
+        item.tasktime = util.timeSerialize(new Date())
+        item.operater = util.getSession('store').user.right
+        if (!item.client) {
+          item.client = item.child + '（学生）'
+        }
+        if(!item.relationship) {
+          item.relationship = ''
+        }
+        if(!item.age) {
+          item.age = ''
+        }
+        if(!item.stage) {
+          item.stage = ''
+        }
+        if(!item.subject) {
+          item.subject = ''
+        }
+        if(!item.will) {
+          item.will = ''
+        }
+      })
+      return excelData
+    },
+    /* 根据电话搜索客户 */
+    getClientByPhone () {
+      const phone = this.phone
+      if (!(/^1\d{10}$/.test(phone))) {
+        this.$message({
+          type: 'warning',
+          message: '请输入合格客户电话'
+        })
+        return
+      }
+      let right = util.getSession('store').user.right
+      this.getClientLoading = true
+      util.mf_post(config.host + '/clientPoolPage/getClientByPhone', {phone, right}, this, '获取' + phone + '表格数据')
+        .then(res => {
+          this.getClientLoading = false
+          this.clientData = res
+          this.totalPage = res.length
+          this.reloadElement('showPagination')
+        })
+    },
     /* 获取表格数据(根据日期) */
     getClientData (date, indexPage) {
       this.byDateOrState = false
@@ -214,13 +501,8 @@ export default {
     },
     /* 分页切换 */
     curPageChange (index) {
-      console.log(index)
       this.indexPage = index
-      if (this.byDateOrState) {
-        this.getClientByState(this.clientState, this.indexPage)
-      } else {
-        this.getClientData(this.byDate, this.indexPage)
-      }
+      this.reloadAfterAction()
     },
     /* 刷新操作 */
     reloadElement (el) {
@@ -396,6 +678,11 @@ export default {
     color: #108cee;
     font-size: 12px;
   }
+  .excelImg{
+    vertical-align: bottom;
+    font-size: 14px;
+    color: #108cee;
+  }
   .task-mask{
     position: absolute;
     top: 0;
@@ -404,5 +691,8 @@ export default {
     height: 100%;
     background: rgba(255, 255, 255, 0.7);
     z-index: 10;
+  }
+  .updateRight{
+    z-index: 1000;
   }
 </style>
